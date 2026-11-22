@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Analyze — every chess move, explained</title>
+  <meta name="description" content="Free chess game analysis in your browser. Paste a PGN, FEN or list of moves and step through the game with Stockfish: the evaluation, the best moves, and every blunder, mistake and great move.">
+  <meta name="color-scheme" content="light">
+  <script>try { const s = localStorage.getItem('analyze-scheme'); if (s === 'dark' || s === 'light dark') document.querySelector('meta[name="color-scheme"]').content = s; } catch {}</script>
+  <meta name="theme-color" content="#fff4e4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#17122b" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));</script>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <div class="blobs" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+  <header class="topbar">
+    <div class="brand-wrap">
+      <a class="brand" href="./">
+        <svg class="logo" viewBox="0 0 40 40" aria-hidden="true">
+          <rect class="logo-die" x="3" y="3" width="34" height="34" rx="9"/>
+          <path class="logo-a" d="M17 8a5 5 0 0 1 3.300 8.800h1.700v2.700h-2.100c.3 3.900 2.200 5.700 4.400 7.500V30H10.700v-3c2.200-1.800 4.100-3.600 4.400-7.500H13v-2.700h1.700A5 5 0 0 1 17 8z"/>
+          <circle class="logo-glass" cx="26" cy="23" r="6"/>
+          <path class="logo-handle" d="M30.300 27.300l4 4"/>
+        </svg>
+        <span>Analyze</span>
+      </a>
+      <p class="credit">Made with ❤️ by <a href="https://mco.dev/">Marc</a><a class="apps-link" href="https://mco.dev/apps/"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>All apps</a></p>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" type="button" command="show-modal" commandfor="info" aria-label="About Analyze">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.500v.010"/></svg>
+      </button>
+      <button class="icon-btn" type="button" command="show-modal" commandfor="settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4.500v5M6 14.500v5"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ───────────── Start: load a game ───────────── -->
+  <main id="start" class="lobby">
+    <section class="pitch">
+      <h1>Every move, <em>explained</em>.</h1>
+      <p class="sub">Paste a chess game and step through it with Stockfish, the world’s strongest free engine. See who was winning, the best moves, and every blunder, mistake and great find.</p>
+      <div class="preview-wrap"><div id="preview" aria-hidden="true"></div></div>
+    </section>
+
+    <section class="card" aria-labelledby="load-title">
+      <h2 id="load-title" class="card-title">Load a game</h2>
+      <form id="load-form" class="stack">
+        <label class="visually-hidden" for="game-text">Game</label>
+        <textarea id="game-text" name="game" rows="7" spellcheck="false" autocomplete="off" autocapitalize="off"
+          placeholder="Paste a PGN, a FEN, a list of moves (1. e4 e5 2. Nf3…) or a Lichess game link"></textarea>
+        <div class="load-row">
+          <label class="btn small ghost file-btn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6zM14 3v5h5"/></svg>
+            Open a PGN file
+            <input type="file" id="game-file" accept=".pgn,.txt,application/x-chess-pgn,text/plain">
+          </label>
+        </div>
+        <button class="btn primary big" type="submit" id="load-btn">
+          <span aria-hidden="true">🔍</span> Analyze
+        </button>
+        <p class="waiting" id="loading" hidden><span class="pulse" aria-hidden="true"></span><span id="loading-text">Fetching the game…</span></p>
+        <p class="error" id="load-error" role="alert" hidden></p>
+      </form>
+
+      <p class="or"><span>or try a famous game</span></p>
+      <div class="samples" id="samples"></div>
+
+      <div id="recent-wrap" hidden>
+        <p class="or"><span>or pick up where you left off</span></p>
+        <ol class="recent" id="recent"></ol>
+      </div>
+
+      <p class="privacy">Stockfish runs right here in your browser. Your games aren’t uploaded anywhere.</p>
+    </section>
+  </main>
+
+  <!-- ───────────── Review ───────────── -->
+  <main id="review" class="game review" hidden>
+    <section class="table" aria-label="Chess board">
+      <div class="seat" id="seat-top">
+        <span class="seat-piece" aria-hidden="true"></span>
+        <span class="seat-name"></span>
+        <span class="seat-elo"></span>
+        <span class="taken"></span>
+      </div>
+
+      <div class="board-row">
+        <div class="evalbar" id="evalbar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-label="White’s winning chances">
+          <div class="evalbar-fill" id="evalbar-fill"></div>
+          <span class="evalbar-text" id="evalbar-text"></span>
+        </div>
+        <div class="board-wrap">
+          <div id="board"></div>
+          <div class="promo" id="promo" hidden>
+            <p id="promo-title">Promote the pawn to…</p>
+            <div class="promo-row" id="promo-row" role="group" aria-labelledby="promo-title"></div>
+            <button class="btn small" type="button" id="promo-cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="seat" id="seat-bottom">
+        <span class="seat-piece" aria-hidden="true"></span>
+        <span class="seat-name"></span>
+        <span class="seat-elo"></span>
+        <span class="taken"></span>
+      </div>
+
+      <div class="nav" role="toolbar" aria-label="Step through the game">
+        <button class="btn small ghost" type="button" id="nav-first" aria-label="Start of the game" aria-keyshortcuts="Home">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg>
+        </button>
+        <button class="btn small ghost" type="button" id="nav-prev" aria-label="Previous move" aria-keyshortcuts="ArrowLeft">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <button class="btn small primary" type="button" id="nav-next" aria-label="Next move" aria-keyshortcuts="ArrowRight">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <button class="btn small ghost" type="button" id="nav-last" aria-label="End of the game" aria-keyshortcuts="End">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M6 6l8 6-8 6z"/></svg>
+        </button>
+        <button class="btn small ghost" type="button" id="nav-flip" aria-label="Flip the board" aria-keyshortcuts="f">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v14M3.500 14.500 7 18l3.500-3.500M17 20V6M13.500 9.500 17 6l3.500 3.500"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <aside class="side" aria-label="Analysis">
+      <section class="panel summary" aria-labelledby="summary-title">
+        <div class="panel-head">
+          <h2 id="summary-title">Game review</h2>
+          <span class="progress-text" id="progress-text" role="status"></span>
+        </div>
+        <div class="progress" id="progress" aria-hidden="true"><i id="progress-bar"></i></div>
+        <p class="game-meta" id="game-meta"></p>
+        <table class="tally" id="tally">
+          <thead><tr><th scope="col"><span class="visually-hidden">Move quality</span></th><th scope="col" id="tally-w">White</th><th scope="col" id="tally-b">Black</th></tr></thead>
+          <tbody id="tally-body"></tbody>
+        </table>
+      </section>
+
+      <section class="panel now" id="now" aria-live="polite" aria-atomic="true">
+        <div class="now-head">
+          <span class="now-badge" id="now-badge" aria-hidden="true"></span>
+          <p class="now-title" id="now-title"></p>
+          <span class="now-score" id="now-score"></span>
+        </div>
+        <p class="now-text" id="now-text"></p>
+        <p class="explore" id="explore" hidden>
+          <span id="explore-text"></span>
+          <button class="btn small" type="button" id="explore-back">Back to the game</button>
+        </p>
+      </section>
+
+      <section class="panel lines-panel" aria-labelledby="lines-title">
+        <div class="panel-head">
+          <h2 id="lines-title">Engine</h2>
+          <span class="depth" id="depth"></span>
+        </div>
+        <ol class="lines" id="lines"></ol>
+      </section>
+
+      <section class="panel graph-panel" aria-label="Who was winning, move by move">
+        <svg class="graph" id="graph" viewBox="0 0 400 100" preserveAspectRatio="none" role="img" aria-label="Evaluation graph"></svg>
+      </section>
+
+      <section class="panel moves-panel" aria-labelledby="moves-title">
+        <h2 id="moves-title" class="visually-hidden">Moves</h2>
+        <ol class="movelist" id="movelist" aria-label="Moves"></ol>
+        <p class="game-result" id="game-result"></p>
+      </section>
+
+      <div class="side-actions">
+        <span class="copy"><button class="btn small ghost" type="button" data-copy="pgn">Copy PGN</button><span class="tip" role="status"></span></span>
+        <span class="copy"><button class="btn small ghost" type="button" data-copy="fen">Copy FEN</button><span class="tip" role="status"></span></span>
+        <span class="copy"><button class="btn small ghost" type="button" data-copy="link">Copy link</button><span class="tip" role="status"></span></span>
+        <button class="btn small" type="button" id="another">Load another game</button>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="copyright">© 2026 Marc Cohen</footer>
+
+  <!-- ───────────── Settings ───────────── -->
+  <dialog id="settings" class="sheet" aria-labelledby="settings-title" closedby="any">
+    <h2 id="settings-title">Settings</h2>
+
+    <fieldset class="scheme-pick">
+      <legend>Appearance</legend>
+      <div class="segmented"><label><input type="radio" name="scheme" value="light dark"><span>System</span></label><label><input type="radio" name="scheme" value="light"><span>Light</span></label><label><input type="radio" name="scheme" value="dark"><span>Dark</span></label></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Review depth</legend>
+      <div class="segmented" id="depth-pick"></div>
+      <p class="help" id="depth-help"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>On the board</legend>
+      <label class="check"><input type="checkbox" id="opt-arrows"> Arrows for the best move</label>
+      <label class="check"><input type="checkbox" id="opt-badges"> Badges on graded moves</label>
+    </fieldset>
+
+    <fieldset class="piece-styles">
+      <legend>Pieces</legend>
+      <div class="style-list" id="style-list"></div>
+    </fieldset>
+
+    <fieldset class="themes">
+      <legend>Themes</legend>
+      <div class="theme-list" id="theme-list"></div>
+    </fieldset>
+
+    <fieldset class="colors">
+      <legend>Your own colors</legend>
+      <label><input type="color" data-color="pieceW"><span>White pieces</span></label>
+      <label><input type="color" data-color="pieceB"><span>Black pieces</span></label>
+      <label><input type="color" data-color="light"><span>Light squares</span></label>
+      <label><input type="color" data-color="dark"><span>Dark squares</span></label>
+      <label><input type="color" data-color="frame"><span>Frame</span></label>
+      <label><input type="color" data-color="glow"><span>Highlights</span></label>
+    </fieldset>
+    <p class="help">Saved in this browser. Until you choose, Analyze uses the colors you picked in Chess.</p>
+
+    <div class="sheet-actions">
+      <button class="btn primary" type="button" data-close autofocus>Done</button>
+    </div>
+  </dialog>
+
+  <!-- ───────────── Info ───────────── -->
+  <dialog id="info" class="sheet wide" aria-labelledby="info-title" closedby="any">
+    <h2 id="info-title">About Analyze</h2>
+    <p>Analyze takes a chess game and goes through it with <a href="https://stockfishchess.org/" target="_blank" rel="noopener">Stockfish</a>, the free, open-source chess engine, running right in your browser. There’s no account and nothing is uploaded.</p>
+
+    <h3>Loading a game</h3>
+    <ul>
+      <li>Paste a game in <strong>PGN</strong>, the format every chess site exports (on Lichess or Chess.com, look for Share or Export). Comments and side lines are skipped.</li>
+      <li>Or paste just the moves, like <code>1. e4 e5 2. Nf3</code>, or <code>e2e4 e7e5</code>.</li>
+      <li>Or a <strong>FEN</strong>, to study a single position, optionally followed by moves.</li>
+      <li>Or a Lichess game link: Analyze fetches the game from Lichess.</li>
+      <li>Links work too: <code>?pgn=</code>, <code>?moves=</code> and <code>?fen=</code> in the address load a game, <code>?ply=12</code> opens it at a move, and <code>?orient=black</code> turns the board.</li>
+    </ul>
+
+    <h3>Reading the review</h3>
+    <ul>
+      <li>The bar beside the board and the graph show who is winning: the share of white is white’s chance of winning, from the engine’s evaluation. Numbers are in pawns (+1.0 is about a pawn up for white); #3 means mate in three.</li>
+      <li>Every move is graded by how much of its player’s winning chances it gave away: <span class="tone-text" data-tone="inaccuracy">?! inaccuracy</span>, <span class="tone-text" data-tone="mistake">? mistake</span> or <span class="tone-text" data-tone="blunder">?? blunder</span>. <span class="tone-text" data-tone="best">★ Best</span> is the engine’s own choice, and <span class="tone-text" data-tone="great">! Great</span> is a best move that was the only good one.</li>
+      <li>Accuracy is out of 100, worked out from every move a player made, the way Lichess does it.</li>
+      <li>The engine panel shows its top three moves where you are, thinking deeper the longer you stay. Tap a line to play it out.</li>
+    </ul>
+
+    <h3>Stepping through</h3>
+    <ul>
+      <li>Use the arrows under the board, the ← and → keys, or tap any move or any point on the graph. Press F to flip the board.</li>
+      <li>Try your own ideas: move a piece on the board and the engine follows along. <strong>Back to the game</strong> returns you to what was played.</li>
+    </ul>
+
+    <p>Stockfish here is the lite WebAssembly build, a little weaker than the full engine but still far beyond any human. A full review takes a minute or so; choose how deep it looks in Settings.</p>
+
+    <div class="sheet-actions">
+      <button class="btn primary" type="button" data-close autofocus>Got it</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" popover="manual"></div>
+</body>
+</html>
