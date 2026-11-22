@@ -607,3 +607,18 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .9em; 
 /* The card grows with the list of recent games; keep the title at the top rather than centered beside it. */
 .lobby { align-items: start; }
 .pitch { padding-block-start: clamp(0rem, 3vw, 2.5rem); }
+/* The review panel folds away; its heading keeps the progress and both accuracies. */
+details.summary { display: block; }
+details.summary > :not(summary) { margin-block-start: .5rem; }
+details.summary > summary { display: grid; gap: .5rem; list-style: none; cursor: pointer; border-radius: 12px; }
+details.summary > summary::-webkit-details-marker { display: none; }
+details.summary > summary:focus-visible { outline: 3px solid var(--violet); outline-offset: 4px; }
+details.summary .panel-head { align-items: center; justify-content: flex-start; }
+details.summary .progress-text { margin-inline-start: auto; font-size: .85rem; }
+details.summary .progress { display: block; }
+details.summary.done .progress { display: none; }
+.chevron { flex: none; inline-size: 1.1rem; block-size: 1.1rem; stroke-width: 2.6; color: var(--ink-soft); transition: rotate .2s; }
+details.summary[open] .chevron { rotate: 90deg; }
+.acc-chip { display: inline-block; min-inline-size: 2rem; padding: .05rem .4rem; border-radius: 7px; text-align: center; font-weight: 900; font-size: .9rem; }
+.acc-chip.w { background: #f7f4ff; color: #2c2541; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); }
+.acc-chip.b { background: #2c2541; color: #f7f4ff; }

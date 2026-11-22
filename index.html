@@ -134,18 +134,21 @@
     </section>
 
     <aside class="side" aria-label="Analysis">
-      <section class="panel summary" aria-labelledby="summary-title">
-        <div class="panel-head">
-          <h2 id="summary-title">Game review</h2>
-          <span class="progress-text" id="progress-text" role="status"></span>
-        </div>
-        <div class="progress" id="progress" aria-hidden="true"><i id="progress-bar"></i></div>
+      <details class="panel summary" id="summary">
+        <summary>
+          <span class="panel-head">
+            <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+            <h2 id="summary-title">Game review</h2>
+            <span class="progress-text" id="progress-text" role="status"></span>
+          </span>
+          <span class="progress" id="progress" aria-hidden="true"><i id="progress-bar"></i></span>
+        </summary>
         <p class="game-meta" id="game-meta"></p>
         <table class="tally" id="tally">
           <thead><tr><th scope="col"><span class="visually-hidden">Move quality</span></th><th scope="col" id="tally-w">White</th><th scope="col" id="tally-b">Black</th></tr></thead>
           <tbody id="tally-body"></tbody>
         </table>
-      </section>
+      </details>
 
       <section class="panel now" id="now" aria-live="polite" aria-atomic="true">
         <div class="now-head">

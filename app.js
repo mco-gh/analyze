@@ -1077,11 +1077,10 @@ graph.addEventListener('pointermove', (event) => { if (graph.hasPointerCapture(e
 
 function renderTally() {
   const done = !sweeping;
-  $('progress').parentElement.classList.toggle('done', done);
+  $('summary').classList.toggle('done', done);
   const total = positions.length;
   const count = Math.min(swept, total);
   $('progress-bar').style.setProperty('--done', `${(count / total) * 100}%`);
-  $('progress-text').textContent = done ? `Stockfish 19 · depth ${depthPick.depth}` : `Analyzing… ${Math.round((count / total) * 100)}%`;
 
   const rows = [];
   const by = { w: [], b: [] };
@@ -1094,6 +1093,17 @@ function renderTally() {
     acc.append(Object.assign(document.createElement('td'), { textContent: value === null ? '–' : done ? Math.round(value) : '…' }));
   }
   rows.push(acc);
+  // Folded, the panel's heading still gives the gist: progress, then each side's accuracy.
+  const accuracy = ['w', 'b'].map((c) => overall(by[c].filter((g) => g.kind !== 'forced').map((g) => g.accuracy)));
+  const line = $('progress-text');
+  if (!done) line.textContent = `Analyzing… ${Math.round((count / total) * 100)}%`;
+  else if (accuracy.every((a) => a === null)) line.textContent = '';
+  else {
+    line.replaceChildren('Accuracy ', ...['w', 'b'].flatMap((c, n) => [
+      n ? ' · ' : '',
+      Object.assign(document.createElement('b'), { className: `acc-chip ${c}`, textContent: accuracy[n] === null ? '–' : Math.round(accuracy[n]), title: `${playerNames()[c]}’s accuracy` }),
+    ]));
+  }
   for (const kind of ORDER) {
     if (kind === 'forced') continue;
     const info = KINDS[kind];
@@ -1165,6 +1175,10 @@ function renderMoves() {
     button.setAttribute('aria-current', String(Number(button.dataset.ply) === current && !side));
   }
 }
+
+// The review panel starts folded; opening it is remembered.
+$('summary').open = saved('review-open') === 'on';
+$('summary').addEventListener('toggle', () => save('review-open', $('summary').open ? 'on' : 'off'));
 
 // ── Copying ──────────────────────────────────────────────────────────────────
 for (const button of document.querySelectorAll('[data-copy]')) {
