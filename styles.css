@@ -604,3 +604,6 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .9em; 
   .review .now { order: -2; }
   .review .lines-panel { order: -1; }
 }
+/* The card grows with the list of recent games; keep the title at the top rather than centered beside it. */
+.lobby { align-items: start; }
+.pitch { padding-block-start: clamp(0rem, 3vw, 2.5rem); }
