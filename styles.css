@@ -538,6 +538,12 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .9em; 
 .now-title .tone-text { margin-inline-start: .3rem; }
 .now-score { font-weight: 900; font-variant-numeric: tabular-nums; padding: .1rem .55rem; border-radius: 10px; background: var(--surface); }
 .now-text { font-size: .92rem; text-wrap: pretty; }
+.opening { font-size: .88rem; font-weight: 800; color: var(--ink-soft); text-wrap: balance; }
+.opening .eco {
+  display: inline-block; padding: .05rem .4rem; border-radius: .4rem; margin-inline-end: .15rem;
+  font-size: .75rem; font-variant-numeric: tabular-nums; background: color-mix(in oklab, var(--violet) 16%, transparent); color: var(--violet);
+}
+.opening .book { font-weight: 600; }
 .now-text .san, .lines .san { font-weight: 800; }
 .explore { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .4rem .6rem; border-radius: 12px; background: var(--surface); font-size: .88rem; font-weight: 700; }
 .explore span { flex: 1; min-inline-size: 10rem; }

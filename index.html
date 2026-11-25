@@ -157,6 +157,7 @@
           <p class="now-title" id="now-title"></p>
           <span class="now-score" id="now-score"></span>
         </div>
+        <p class="opening" id="opening" hidden><span class="eco" id="opening-eco"></span> <span id="opening-name"></span><span class="book" id="opening-book"></span></p>
         <p class="now-text" id="now-text"></p>
         <p class="explore" id="explore" hidden>
           <span id="explore-text"></span>
@@ -259,6 +260,7 @@
     <ul>
       <li>The bar beside the board and the graph show who is winning: the share of white is white’s chance of winning, from the engine’s evaluation. Numbers are in pawns (+1.0 is about a pawn up for white); #3 means mate in three.</li>
       <li>Every move is graded by how much of its player’s winning chances it gave away: <span class="tone-text" data-tone="inaccuracy">?! inaccuracy</span>, <span class="tone-text" data-tone="mistake">? mistake</span> or <span class="tone-text" data-tone="blunder">?? blunder</span>. <span class="tone-text" data-tone="best">★ Best</span> is the engine’s own choice, and <span class="tone-text" data-tone="great">! Great</span> is a best move that was the only good one.</li>
+      <li>The opening is named as the moves follow it, with “out of the book” once they leave the known lines. Names are from Lichess’s free opening tables.</li>
       <li>Accuracy is out of 100, worked out from every move a player made, the way Lichess does it.</li>
       <li>The engine panel shows its top three moves where you are, thinking deeper the longer you stay. Tap a line to play it out.</li>
     </ul>

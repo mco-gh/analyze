@@ -8,6 +8,7 @@ import { winChance, scoreText, grade, overall, KINDS, ORDER } from './review.js'
 import { Board, pieceEl, pieceSVG, redrawPieces } from './board.js';
 import { PIECE_STYLES, setPieceStyle, pieceStyle } from './pieces.js';
 import { SAMPLES } from './samples.js';
+import { loadOpenings, openingOf } from './openings.js';
 
 const $ = (id) => document.getElementById(id);
 const TITLE = document.title;
@@ -422,6 +423,11 @@ function openReview(read, { ply: startPly = null, orient: wanted = null } = {}) 
   render();
   startSweep();
   if (!game.explorer || game.moves.length) storeRecent(recentEntry());
+  loadOpenings().then(() => {
+    if (!game) return;
+    scheduleRender();
+    if (game.explorer && game.moves.length) storeRecent(recentEntry());
+  });
 }
 
 function playerNames() {
@@ -444,7 +450,7 @@ function recentEntry() {
   if (game.explorer) {
     const line = sanLine(game.start, game.moves.map((m) => m.uci), 6);
     return {
-      id: gameId, explorer: true, title: 'Explorer', sub: game.moves.length > 6 ? `${line} …` : line,
+      id: gameId, explorer: true, title: openingOf(positions) ? `Explorer · ${openingOf(positions).name}` : 'Explorer', sub: game.moves.length > 6 ? `${line} …` : line,
       when: Date.now(), pgn: writePGN(game), orient, ply, evals: evals.map(packEval),
     };
   }
@@ -1039,6 +1045,25 @@ function renderNow() {
   }
   card.dataset.tone = tone;
   $('now-badge').textContent = badge;
+  renderOpening();
+}
+
+/** The opening the moves so far belong to, and whether they're still in the book. */
+function renderOpening() {
+  const line = side
+    ? [...positions.slice(0, side.base + 1), ...side.positions.slice(1, side.at + 1)]
+    : positions.slice(0, ply + 1);
+  const opening = game.startFen === Chess.START_FEN ? openingOf(line) : null;
+  $('opening').hidden = !opening;
+  if (!opening) return;
+  $('opening-eco').textContent = opening.eco;
+  $('opening-name').textContent = opening.name;
+  let book = '';
+  if (opening.ply < line.length - 1) {
+    const moves = side ? [...game.moves.slice(0, side.base), ...side.moves.slice(0, side.at)] : game.moves;
+    book = ` · out of the book after ${moveNumber(line[opening.ply - 1])} ${moves[opening.ply - 1].san}`;
+  }
+  $('opening-book').textContent = book;
 }
 
 function renderLines() {

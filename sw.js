@@ -13,6 +13,8 @@ const PRECACHE = [
   "./pgn.js",
   "./pieces.js",
   "./review.js",
+  "./openings.js",
+  "./openings.json",
   "./samples.js",
   "./styles.css",
   "./icon.svg",
