@@ -240,8 +240,10 @@ $('game-file').addEventListener('change', async () => {
 // Lichess shares games publicly and lets other sites fetch them.
 const LICHESS = /lichess\.org\/(?:embed\/|game\/export\/)?(?:game\/)?([A-Za-z0-9]{8})(?:[A-Za-z0-9]{4})?(?:\/(white|black))?/;
 
-async function load(text, { ply = null, orient: wanted = null, fromUrl = false } = {}) {
+async function load(text, { ply = null, orient: wanted = null, fromUrl = false, explorer = null } = {}) {
   text = String(text ?? '').trim();
+  // Nothing to load: the starting position, to build a game on (Explorer mode).
+  if (!text || explorer) return openExplorer(text, { ply, orient: wanted, id: explorer });
   if (/chess\.com\//i.test(text) && text.length < 300) {
     return setStartState({ error: 'Chess.com doesn’t let other sites fetch its games. On Chess.com, choose Share, then PGN, and paste that here.' });
   }
@@ -268,6 +270,23 @@ async function load(text, { ply = null, orient: wanted = null, fromUrl = false }
   openReview(read, { ply, orient: wanted });
 }
 
+/**
+ * Explorer mode: a game built move by move on the board, for both sides, with
+ * every move graded as it's played. `text` holds any moves so far (from a link
+ * or a recent game), and `id` keeps one session's entry in Recent games.
+ */
+function openExplorer(text, { ply = null, orient: wanted = null, id = null } = {}) {
+  setStartState();
+  let read = text ? readGame(text).game : null;
+  if (!read) {
+    const start = Chess.fromFEN(Chess.START_FEN);
+    read = { headers: {}, start, startFen: Chess.START_FEN, moves: [], result: '*', count: 1 };
+  }
+  read.headers = { Event: 'Explorer' };
+  read.explorer = typeof id === 'string' && /^x[a-z0-9]{1,16}$/.test(id) ? id : `x${Date.now().toString(36)}`;
+  openReview(read, { ply: ply ?? read.moves.length, orient: wanted });
+}
+
 // ── Recently analyzed games ──────────────────────────────────────────────────
 const RECENT_KEY = 'analyze-recent';
 const RECENT_MAX = 12;
@@ -286,6 +305,7 @@ function recentList() {
 }
 
 function storeRecent(entry) {
+  if (entry.explorer && entry.sub === '') return;   // no moves yet: nothing worth keeping
   const list = [entry, ...recentList().filter((g) => g.id !== entry.id)].slice(0, RECENT_MAX);
   try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); }
   catch { try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 3))); } catch {} }
@@ -306,7 +326,7 @@ function showRecent() {
       Object.assign(document.createElement('small'), { textContent: [entry.sub, date].filter(Boolean).join(' · ') }),
       Object.assign(document.createElement('span'), { className: 'go', textContent: '→', ariaHidden: 'true' }),
     );
-    open.addEventListener('click', () => load(entry.pgn, { ply: entry.ply ?? null, orient: entry.orient ?? null }));
+    open.addEventListener('click', () => load(entry.pgn, { ply: entry.ply ?? null, orient: entry.orient ?? null, explorer: entry.explorer ? entry.id : null }));
     const forget = Object.assign(document.createElement('button'), { type: 'button', className: 'forget', textContent: '×' });
     forget.setAttribute('aria-label', `Forget ${entry.title}`);
     forget.addEventListener('click', () => {
@@ -361,7 +381,7 @@ const board = new Board($('board'), { press: onPress, release: onRelease });
 
 function openReview(read, { ply: startPly = null, orient: wanted = null } = {}) {
   game = read;
-  gameId = hash(`${game.startFen}|${game.moves.map((m) => m.uci).join(' ')}`);
+  gameId = game.explorer ?? hash(`${game.startFen}|${game.moves.map((m) => m.uci).join(' ')}`);
   positions = [game.start];
   for (const m of game.moves) positions.push(Chess.apply(positions.at(-1), m.move));
   legal = positions.map((pos) => Chess.legalMoves(pos));
@@ -380,7 +400,8 @@ function openReview(read, { ply: startPly = null, orient: wanted = null } = {}) 
   ply = Number.isInteger(n) && n >= 0 ? Math.min(n, game.moves.length) : 0;
 
   const names = playerNames();
-  document.title = `${names.w} vs ${names.b} · ${TITLE}`;
+  document.title = game.explorer ? `Explorer · ${TITLE}` : `${names.w} vs ${names.b} · ${TITLE}`;
+  $('summary-title').textContent = game.explorer ? 'Explorer' : 'Game review';
   $('tally-w').textContent = names.w;
   $('tally-b').textContent = names.b;
   $('tally-w').title = names.w;
@@ -388,7 +409,7 @@ function openReview(read, { ply: startPly = null, orient: wanted = null } = {}) 
   const h = game.headers;
   const date = h.Date && !h.Date.startsWith('?') ? h.Date.replace(/\.\?\?/g, '').replace(/\./g, '-') : '';
   const meta = [h.Event && h.Event !== '?' ? h.Event : '', date, h.Opening ?? (h.ECO && h.ECO !== '?' ? `ECO ${h.ECO}` : '')].filter(Boolean);
-  $('game-meta').textContent = meta.join(' · ');
+  $('game-meta').textContent = game.explorer ? 'Explorer mode: you make the moves for both sides.' : meta.join(' · ');
   $('game-result').textContent = resultText();
 
   rememberUrl();
@@ -400,7 +421,7 @@ function openReview(read, { ply: startPly = null, orient: wanted = null } = {}) 
   shownMoves = '';
   render();
   startSweep();
-  storeRecent(recentEntry());
+  if (!game.explorer || game.moves.length) storeRecent(recentEntry());
 }
 
 function playerNames() {
@@ -420,6 +441,13 @@ function resultText() {
 }
 
 function recentEntry() {
+  if (game.explorer) {
+    const line = sanLine(game.start, game.moves.map((m) => m.uci), 6);
+    return {
+      id: gameId, explorer: true, title: 'Explorer', sub: game.moves.length > 6 ? `${line} …` : line,
+      when: Date.now(), pgn: writePGN(game), orient, ply, evals: evals.map(packEval),
+    };
+  }
   const names = playerNames();
   const sub = [`${Math.ceil(game.moves.length / 2)} moves`, game.result !== '*' ? game.result.replace('1/2-1/2', '½-½') : ''].filter(Boolean).join(', ');
   return {
@@ -436,6 +464,14 @@ function rememberUrl() {
 
 function shareUrl(withPly = true) {
   const params = new URLSearchParams();
+  if (game.explorer) {
+    params.set('explore', game.explorer);
+    if (game.startFen !== Chess.START_FEN) params.set('fen', game.startFen);
+    if (game.moves.length) params.set('moves', game.moves.map((m) => m.san).join(' '));
+    if (orient === 'b') params.set('orient', 'black');
+    if (withPly && ply !== game.moves.length) params.set('ply', String(ply));
+    return `${location.pathname}?${params}`;
+  }
   const h = Object.fromEntries(Object.entries(game.headers).filter(([k, v]) => v && v !== '?' && ['Event', 'Site', 'Date', 'White', 'Black', 'WhiteElo', 'BlackElo', 'Opening', 'ECO', 'Termination'].includes(k)));
   params.set('pgn', writePGN({ ...game, headers: h }).replace(/\[(Event|Site|Date|Round|White|Black) "\?(?:\?\?\?\.\?\?\.\?\?)?"\]\n/g, ''));
   if (orient === 'b') params.set('orient', 'black');
@@ -661,7 +697,8 @@ function playHere(move, extra = []) {
   const { pos } = from;
   const list = Chess.legalMoves(pos);
   const entry = { move, san: Chess.sanOf(pos, move, list), uci: Chess.uciOf(move) };
-  if (!side && game.moves[ply]?.uci === entry.uci && !extra.length) return goTo(ply + 1);
+  if (!side && game.moves[ply]?.uci === entry.uci && (!extra.length || game.explorer)) return goTo(ply + 1);
+  if (game.explorer && !side) return extendGame(entry, from);
   if (side && side.moves[side.at]?.uci === entry.uci && !extra.length) { side.at++; return show(from, move); }
   if (!side) side = { base: ply, moves: [], positions: [pos], at: 0 };
   side.moves.length = side.at;
@@ -672,6 +709,34 @@ function playHere(move, extra = []) {
   }
   side.at++;
   show(from, move);
+}
+
+/**
+ * Explorer mode: the move becomes part of the game. Played anywhere but the end,
+ * it starts a new line from there, replacing the moves that came after.
+ */
+function extendGame(entry, from) {
+  const dropped = game.moves.length - ply;
+  game.moves.length = ply;
+  positions.length = ply + 1;
+  legal.length = ply + 1;
+  evals.length = ply + 1;
+  grades.length = ply;
+  game.moves.push(entry);
+  positions.push(Chess.apply(positions[ply], entry.move));
+  legal.push(Chess.legalMoves(positions.at(-1)));
+  evals.push(terminalEval(ply + 1));
+  grades.push(null);
+  regrade(ply);
+  ply++;
+  const end = Chess.verdict(positions.at(-1), legal.at(-1));
+  game.result = end === 'checkmate' ? (positions.at(-1).turn === 'w' ? '0-1' : '1-0') : end ? '1/2-1/2' : '*';
+  $('game-result').textContent = resultText();
+  if (dropped) toast(dropped === 1 ? 'Replaced the move that came next.' : `A new line from here: replaced the ${dropped} moves that came next.`);
+  show(from, entry.move);
+  rememberUrl();
+  storeRecent(recentEntry());
+  startSweep();
 }
 
 /** Play out one of the engine's lines from here, stopping after its first move. */
@@ -928,6 +993,11 @@ function renderNow() {
       title.replaceChildren(`${moveNumber(p)} ${lastPly.san}`);
       text.textContent = side.at === side.moves.length && side.at === 1 ? 'Not the move played in the game. The engine follows your line.' : 'A line of your own. The engine follows along.';
     }
+  } else if (ply === 0 && game.explorer) {
+    title.textContent = 'Explorer mode';
+    text.textContent = game.moves.length
+      ? 'Step forward through your line, or play a different move here to start a new one.'
+      : 'Make the moves for both sides, say an opening you’re studying. Stockfish grades each one as you go. Step back and play something else to try another line.';
   } else if (ply === 0) {
     title.textContent = game.startFen === Chess.START_FEN ? 'Starting position' : 'Starting position (from FEN)';
     text.textContent = game.moves.length ? 'Step through the moves with the arrows or the → key, or tap any move or point on the graph.' : 'No moves to step through: the engine panel shows the best ideas here. Move a piece to explore.';
@@ -1140,7 +1210,7 @@ function renderTally() {
 
 let shownMoves = '';
 function renderMoves() {
-  const key = `${gameId}|${grades.map((g) => g?.kind ?? '').join(',')}`;
+  const key = `${gameId}|${game.moves.map((m) => m.san).join(' ')}|${grades.map((g) => g?.kind ?? '').join(',')}`;
   const list = $('movelist');
   if (key !== shownMoves) {
     shownMoves = key;
@@ -1242,7 +1312,9 @@ if (!('CommandEvent' in window)) {
   const wanted = ['b', 'black'].includes(orientParam) ? 'b' : ['w', 'white'].includes(orientParam) ? 'w' : null;
   const text = pgn ?? (fen ? `${fen}\n${moves ?? ''}` : moves);
   showRecent();
-  if (text) {
+  if (params.has('explore')) {
+    load(text ?? '', { ply: params.get('ply'), orient: wanted, explorer: params.get('explore') || true });
+  } else if (text) {
     $('game-text').value = text;
     load(text, { ply: params.get('ply'), orient: wanted, fromUrl: true });
   }

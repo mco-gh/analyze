@@ -66,6 +66,7 @@
         <button class="btn primary big" type="submit" id="load-btn">
           <span aria-hidden="true">🔍</span> Analyze
         </button>
+        <p class="hint">Nothing to paste? Click Analyze to start from the opening position and build a game move by move in Explorer mode.</p>
         <p class="waiting" id="loading" hidden><span class="pulse" aria-hidden="true"></span><span id="loading-text">Fetching the game…</span></p>
         <p class="error" id="load-error" role="alert" hidden></p>
       </form>
@@ -250,6 +251,7 @@
       <li>Or paste just the moves, like <code>1. e4 e5 2. Nf3</code>, or <code>e2e4 e7e5</code>.</li>
       <li>Or a <strong>FEN</strong>, to study a single position, optionally followed by moves.</li>
       <li>Or a Lichess game link: Analyze fetches the game from Lichess.</li>
+      <li>Or nothing at all: <strong>Explorer mode</strong> starts from the opening position, and you make the moves for both sides, handy for studying openings. Each move is graded as you play it. Step back and play something else to start a new line from there.</li>
       <li>Links work too: <code>?pgn=</code>, <code>?moves=</code> and <code>?fen=</code> in the address load a game, <code>?ply=12</code> opens it at a move, and <code>?orient=black</code> turns the board.</li>
     </ul>
 

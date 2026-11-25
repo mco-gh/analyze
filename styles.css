@@ -178,6 +178,7 @@ a { color: var(--violet); }
 }
 .error { padding: .6rem .9rem; border-radius: 14px; background: color-mix(in oklab, var(--coral), transparent 85%); color: var(--coral); font-weight: 700; }
 .privacy { font-size: .82rem; color: var(--ink-soft); }
+.hint { margin-block-start: -.35rem; font-size: .85rem; color: var(--ink-soft); text-align: center; text-wrap: balance; }
 
 /* ── Game layout ── */
 .game {

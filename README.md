@@ -11,6 +11,7 @@ It is a static app with no build step: open `index.html` from any web server. It
 - **A FEN**, alone or followed by moves.
 - **A Lichess game link**: the game is fetched from Lichess's public export API.
 - **A PGN file**, opened from disk.
+- **Nothing**: clicking Analyze with nothing pasted opens **Explorer mode**, the starting position with no moves, where you build a game move by move for both sides (for studying openings, say). Each move is graded as it's played; a move played earlier in the line replaces the moves after it. Its address is `?explore=<id>&moves=…`, and it's kept in Recent games.
 - **The address**: `?pgn=…`, `?moves=…` or `?fen=…` (with optional `&moves=…`) load a game, `?ply=N` opens it after N half-moves, and `?orient=black` turns the board. [Chess](https://mco.dev/chess/) uses this for its "Analyze this game" button.
 
 ## How it works
